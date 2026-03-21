@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Comunidad | Nube Gallery</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							arena: "#c7b5a5",
+							taupe: "#a69281",
+							cielo: "#8ec9eb",
+							mar: "#38a8bf",
+							oceano: "#0f7e8d",
+							noche: "#061633",
+							tinta: "#eaf6ff",
+						},
+						fontFamily: {
+							display: ["Poppins", "Segoe UI", "sans-serif"],
+							body: ["Nunito", "Segoe UI", "sans-serif"],
+						},
+						boxShadow: {
+							suave: "0 18px 45px rgba(8, 30, 57, 0.35)",
+						},
+						keyframes: {
+							fadeUp: {
+								"0%": { opacity: "0", transform: "translateY(16px)" },
+								"100%": { opacity: "1", transform: "translateY(0)" },
+							},
+						},
+						animation: {
+							fadeUp: "fadeUp 600ms ease-out both",
+						},
+					},
+				},
+			};
+		</script>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet" />
+	</head>
+	<body class="min-h-screen bg-gradient-to-b from-cielo via-mar to-oceano font-body text-tinta">
+		<div class="mx-auto min-h-screen w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+			<header class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/20 bg-noche/90 px-5 py-4 shadow-suave">
+				<div>
+					<p class="font-display text-2xl font-semibold text-cielo">Nube Gallery</p>
+					<p class="text-sm text-slate-200/80">Dashboard de comunidad</p>
+					<p id="comunidad-usuario" class="text-xs text-slate-300/70"></p>
+				</div>
+				<nav class="flex items-center gap-2 text-sm sm:gap-3">
+					<a href="dasbord.htm" class="rounded-lg border border-cielo/20 px-3 py-2 text-slate-200 transition hover:bg-white/10">Mi perfil</a>
+					<a href="loguin.html" class="rounded-lg border border-cielo/20 px-3 py-2 text-slate-200 transition hover:bg-white/10">Iniciar sesion</a>
+				</nav>
+			</header>
+
+			<section class="mb-6 animate-fadeUp rounded-2xl border border-white/20 bg-noche/90 p-6 shadow-suave">
+				<h1 class="font-display text-3xl font-bold sm:text-4xl">Arte compartido por la comunidad</h1>
+				<p class="mt-2 text-slate-200/80">Descubre obras publicadas por otros artistas de Nube Gallery.</p>
+
+				<div class="mt-5 grid gap-4 md:grid-cols-[1fr_220px_140px]">
+					<input
+						id="filtro-busqueda"
+						type="search"
+						placeholder="Buscar por titulo, descripcion o autor"
+						class="w-full rounded-lg border border-cielo/20 bg-white/10 px-4 py-3 text-white placeholder:text-slate-300/60 outline-none transition focus:border-mar focus:bg-white/15"
+					/>
+					<select id="filtro-categoria" title="Filtrar por categoria" aria-label="Filtrar por categoria" class="rounded-lg border border-cielo/20 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-mar focus:bg-white/15">
+						<option value="todos" class="text-noche">Todas</option>
+						<option value="foto" class="text-noche">Fotografia</option>
+						<option value="pintura" class="text-noche">Pintura</option>
+						<option value="documento" class="text-noche">Documento</option>
+					</select>
+					<button id="limpiar-filtros" type="button" class="rounded-lg bg-mar px-4 py-3 font-semibold text-noche transition hover:bg-cielo">
+						Limpiar
+					</button>
+				</div>
+
+				<div class="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+					<div class="rounded-xl bg-white/10 p-4">
+						<p class="text-slate-300/80">Artistas activos</p>
+						<p id="total-artistas" class="mt-1 text-2xl font-bold text-cielo">0</p>
+					</div>
+					<div class="rounded-xl bg-white/10 p-4">
+						<p class="text-slate-300/80">Obras publicas</p>
+						<p id="total-obras" class="mt-1 text-2xl font-bold text-cielo">0</p>
+					</div>
+					<div class="rounded-xl bg-white/10 p-4">
+						<p class="text-slate-300/80">Resultados visibles</p>
+						<p id="total-resultados" class="mt-1 text-2xl font-bold text-cielo">0</p>
+					</div>
+				</div>
+			</section>
+
+			<section id="comunidad-grid" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></section>
+			<p id="feed-msg" class="mt-4 text-sm text-cielo"></p>
+		</div>
+
+		<script>
+			const DB_KEY = "nube_gallery_db";
+			const USER_KEY = "nube_gallery_current_user";
+			const IMAGENES_SEMILLA = ["flor_loto.jpg", "paint1.jpg", "paint2.jpg", "paint4.jpg", "paint5.jpg", "paint6.jpg"];
+
+			const comunidadUsuario = document.getElementById("comunidad-usuario");
+			const filtroBusqueda = document.getElementById("filtro-busqueda");
+			const filtroCategoria = document.getElementById("filtro-categoria");
+			const limpiarFiltros = document.getElementById("limpiar-filtros");
+			const comunidadGrid = document.getElementById("comunidad-grid");
+
+			const totalArtistas = document.getElementById("total-artistas");
+			const totalObras = document.getElementById("total-obras");
+			const totalResultados = document.getElementById("total-resultados");
+			const feedMsg = document.getElementById("feed-msg");
+
+			function getDB() {
+				const raw = localStorage.getItem(DB_KEY);
+				if (!raw) return { usuarios: [], publicaciones: [] };
+				try {
+					const parsed = JSON.parse(raw);
+					return {
+						usuarios: Array.isArray(parsed.usuarios) ? parsed.usuarios : [],
+						publicaciones: Array.isArray(parsed.publicaciones) ? parsed.publicaciones : [],
+					};
+				} catch {
+					return { usuarios: [], publicaciones: [] };
+				}
+			}
+
+			function saveDB(db) {
+				localStorage.setItem(DB_KEY, JSON.stringify(db));
+			}
+
+			function escapeHTML(value) {
+				return String(value)
+					.replaceAll("&", "&amp;")
+					.replaceAll("<", "&lt;")
+					.replaceAll(">", "&gt;")
+					.replaceAll('"', "&quot;")
+					.replaceAll("'", "&#39;");
+			}
+
+			function getCurrentUser(db) {
+				const currentUserId = Number(localStorage.getItem(USER_KEY));
+				const currentUser = db.usuarios.find((user) => user.id === currentUserId);
+				return { currentUserId, currentUser };
+			}
+
+			function ensureInteracciones(item) {
+				if (!Array.isArray(item.likes)) item.likes = [];
+				if (!Array.isArray(item.comentarios)) item.comentarios = [];
+				return item;
+			}
+
+			function inferCategoria(fileName) {
+				if (fileName.startsWith("paint")) return "pintura";
+				return "foto";
+			}
+
+			function ensureDemoUsers(db) {
+				const demoUsers = [
+					{ id: 900001, nombre: "Luna Mar", correo: "luna.mar@nube.demo", contrasena: "demo12345", creadoEn: new Date().toISOString() },
+					{ id: 900002, nombre: "Tomas Azul", correo: "tomas.azul@nube.demo", contrasena: "demo12345", creadoEn: new Date().toISOString() },
+					{ id: 900003, nombre: "Carla Oleo", correo: "carla.oleo@nube.demo", contrasena: "demo12345", creadoEn: new Date().toISOString() },
+				];
+
+				demoUsers.forEach((demo) => {
+					const exists = db.usuarios.some((user) => user.correo === demo.correo);
+					if (!exists) db.usuarios.push(demo);
+				});
+			}
+
+			function seedPublicacionesSiHaceFalta(db, currentUserId) {
+				const yaHayPublicas = db.publicaciones.some((item) => item.estado === "publicado" && item.visibilidad === "publico");
+				if (yaHayPublicas) return;
+
+				ensureDemoUsers(db);
+				const autoresPool = [currentUserId || 900001, 900001, 900002, 900003].filter(Boolean);
+
+				IMAGENES_SEMILLA.forEach((fileName, index) => {
+					const seedRef = `seed:${fileName}`;
+					const exists = db.publicaciones.some((pub) => pub.seedRef === seedRef);
+					if (exists) return;
+
+					const autorId = autoresPool[index % autoresPool.length];
+					db.publicaciones.push({
+						id: Date.now() + index,
+						usuarioId: autorId,
+						titulo: `Obra ${fileName.replace(".jpg", "").replace("_", " ")}`,
+						categoria: inferCategoria(fileName),
+						visibilidad: "publico",
+						descripcion: `Publicacion inicial cargada desde imagenes/${fileName}`,
+						estado: "publicado",
+						imagenes: [
+							{
+								nombre: fileName,
+								tipo: "image/jpeg",
+								tamano: 0,
+								contenido: `imagenes/${fileName}`,
+							},
+						],
+						documentos: [],
+						likes: [],
+						comentarios: [],
+						creadoEn: new Date(Date.now() - index * 3600000).toISOString(),
+						seedRef,
+					});
+				});
+			}
+
+			function formatFecha(isoDate) {
+				return new Date(isoDate).toLocaleDateString("es-ES", {
+					year: "numeric",
+					month: "short",
+					day: "numeric",
+				});
+			}
+
+			function getPublicacionesComunidad(db, currentUserId) {
+				return db.publicaciones.filter((item) => item.estado === "publicado" && item.visibilidad === "publico");
+			}
+
+			function renderTarjetas(publicaciones, usersMap, currentUserId) {
+				comunidadGrid.innerHTML = "";
+				if (!publicaciones.length) {
+					comunidadGrid.innerHTML = '<article class="rounded-2xl border border-white/20 bg-noche/90 p-6 text-slate-300/80 sm:col-span-2 lg:col-span-3">No hay obras publicas que coincidan con los filtros.</article>';
+					return;
+				}
+
+				publicaciones
+					.slice()
+					.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn))
+					.forEach((item) => {
+						ensureInteracciones(item);
+						const autor = usersMap.get(item.usuarioId) || { nombre: "Artista anonimo", correo: "" };
+						const portada = Array.isArray(item.imagenes) && item.imagenes[0] ? item.imagenes[0].contenido : "imagenes/flor_loto.jpg";
+						const yaDioLike = currentUserId ? item.likes.includes(currentUserId) : false;
+						const ultimosComentarios = item.comentarios.slice(-3);
+						const comentariosHTML = ultimosComentarios.length
+							? ultimosComentarios
+									.map(
+										(comentario) => `
+											<li class="rounded-lg bg-white/10 px-3 py-2">
+												<p class="text-xs font-semibold text-cielo">${escapeHTML(comentario.autor)}</p>
+												<p class="text-xs text-slate-200/90">${escapeHTML(comentario.texto)}</p>
+										</li>
+									`
+								  )
+									.join("")
+							: '<li class="rounded-lg bg-white/10 px-3 py-2 text-xs text-slate-300/80">Sin comentarios aun</li>';
+
+						const card = document.createElement("article");
+						card.className = "animate-fadeUp overflow-hidden rounded-2xl border border-white/20 bg-noche/90 shadow-suave";
+
+						card.innerHTML = `
+							<img src="${portada}" alt="${item.titulo}" class="h-52 w-full object-cover" />
+							<div class="space-y-3 p-4">
+								<div class="flex items-start justify-between gap-3">
+									<h3 class="line-clamp-2 font-display text-xl font-semibold text-slate-100">${escapeHTML(item.titulo)}</h3>
+									<span class="rounded-full bg-cielo/20 px-3 py-1 text-xs font-semibold text-cielo">${item.categoria}</span>
+								</div>
+								<p class="line-clamp-3 text-sm text-slate-300/80">${escapeHTML(item.descripcion || "Sin descripcion")}</p>
+								<div class="border-t border-white/10 pt-3 text-xs text-slate-300/80">
+									<p>Por ${escapeHTML(autor.nombre)}</p>
+									<p>${formatFecha(item.creadoEn)}</p>
+								</div>
+								<div class="flex items-center justify-between gap-3">
+									<button data-action="like" data-id="${item.id}" class="rounded-lg border px-3 py-1 text-xs font-semibold transition ${
+										yaDioLike
+											? "border-cielo bg-cielo/20 text-cielo"
+											: "border-white/20 text-slate-200 hover:bg-white/10"
+									}">
+										${yaDioLike ? "Te gusta" : "Me gusta"} (${item.likes.length})
+									</button>
+									<span class="text-xs text-slate-300/80">Comentarios: ${item.comentarios.length}</span>
+								</div>
+								<form data-action="comentario" data-id="${item.id}" class="flex gap-2">
+									<input
+										type="text"
+										name="comentario"
+										placeholder="Escribe un comentario"
+										class="w-full rounded-lg border border-cielo/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-slate-300/60 outline-none focus:border-mar"
+										required
+									/>
+									<button type="submit" class="rounded-lg bg-mar px-3 py-2 text-xs font-semibold text-noche">Enviar</button>
+								</form>
+								<ul class="space-y-2">${comentariosHTML}</ul>
+							</div>
+						`;
+
+						const likeBtn = card.querySelector('[data-action="like"]');
+						const comentarioForm = card.querySelector('[data-action="comentario"]');
+
+						likeBtn.addEventListener("click", () => toggleLike(item.id));
+						comentarioForm.addEventListener("submit", (event) => {
+							event.preventDefault();
+							const input = comentarioForm.querySelector('input[name="comentario"]');
+							agregarComentario(item.id, input.value);
+							input.value = "";
+						});
+
+						comunidadGrid.appendChild(card);
+					});
+			}
+
+			function toggleLike(publicacionId) {
+				const db = getDB();
+				const { currentUserId, currentUser } = getCurrentUser(db);
+				if (!currentUser) {
+					feedMsg.textContent = "Inicia sesion para dar Me gusta.";
+					feedMsg.className = "mt-4 text-sm text-arena";
+					return;
+				}
+
+				const pub = db.publicaciones.find((item) => item.id === publicacionId);
+				if (!pub) return;
+				ensureInteracciones(pub);
+
+				const index = pub.likes.indexOf(currentUserId);
+				if (index >= 0) {
+					pub.likes.splice(index, 1);
+					feedMsg.textContent = "Quitaste tu Me gusta.";
+				} else {
+					pub.likes.push(currentUserId);
+					feedMsg.textContent = "Me gusta registrado.";
+				}
+
+				feedMsg.className = "mt-4 text-sm text-cielo";
+				saveDB(db);
+				actualizar();
+			}
+
+			function agregarComentario(publicacionId, texto) {
+				const textoLimpio = texto.trim();
+				if (!textoLimpio) return;
+
+				const db = getDB();
+				const { currentUser, currentUserId } = getCurrentUser(db);
+				if (!currentUser) {
+					feedMsg.textContent = "Inicia sesion para comentar.";
+					feedMsg.className = "mt-4 text-sm text-arena";
+					return;
+				}
+
+				const pub = db.publicaciones.find((item) => item.id === publicacionId);
+				if (!pub) return;
+				ensureInteracciones(pub);
+
+				pub.comentarios.push({
+					id: Date.now(),
+					userId: currentUserId,
+					autor: currentUser.nombre,
+					texto: textoLimpio,
+					creadoEn: new Date().toISOString(),
+				});
+
+				feedMsg.textContent = "Comentario publicado.";
+				feedMsg.className = "mt-4 text-sm text-cielo";
+				saveDB(db);
+				actualizar();
+			}
+
+			function actualizar() {
+				const db = getDB();
+				db.publicaciones.forEach((item) => ensureInteracciones(item));
+
+				const { currentUserId, currentUser } = getCurrentUser(db);
+				seedPublicacionesSiHaceFalta(db, currentUserId);
+				db.publicaciones.forEach((item) => ensureInteracciones(item));
+				saveDB(db);
+
+				const usersMap = new Map(db.usuarios.map((user) => [user.id, user]));
+
+				comunidadUsuario.textContent = currentUser
+					? `Viendo comunidad como: ${currentUser.nombre}`
+					: "Viendo comunidad sin sesion activa";
+
+				const base = getPublicacionesComunidad(db, currentUserId);
+				const busqueda = filtroBusqueda.value.trim().toLowerCase();
+				const categoria = filtroCategoria.value;
+
+				const filtradas = base.filter((item) => {
+					const autorNombre = (usersMap.get(item.usuarioId)?.nombre || "").toLowerCase();
+					const matchTexto =
+						!busqueda ||
+						item.titulo.toLowerCase().includes(busqueda) ||
+						(item.descripcion || "").toLowerCase().includes(busqueda) ||
+						autorNombre.includes(busqueda);
+					const matchCategoria = categoria === "todos" || item.categoria === categoria;
+					return matchTexto && matchCategoria;
+				});
+
+				totalArtistas.textContent = String(new Set(base.map((item) => item.usuarioId)).size);
+				totalObras.textContent = String(base.length);
+				totalResultados.textContent = String(filtradas.length);
+
+				renderTarjetas(filtradas, usersMap, currentUserId);
+			}
+
+			filtroBusqueda.addEventListener("input", actualizar);
+			filtroCategoria.addEventListener("change", actualizar);
+			limpiarFiltros.addEventListener("click", () => {
+				filtroBusqueda.value = "";
+				filtroCategoria.value = "todos";
+				actualizar();
+			});
+
+			actualizar();
+		</script>
+	</body>
+</html>

@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Perfil | Nube Gallery</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							arena: "#c7b5a5",
+							taupe: "#a69281",
+							cielo: "#8ec9eb",
+							mar: "#38a8bf",
+							oceano: "#0f7e8d",
+							noche: "#061633",
+							tinta: "#eaf6ff",
+						},
+						fontFamily: {
+							display: ["Poppins", "Segoe UI", "sans-serif"],
+							body: ["Nunito", "Segoe UI", "sans-serif"],
+						},
+						boxShadow: {
+							suave: "0 18px 45px rgba(8, 30, 57, 0.35)",
+						},
+						keyframes: {
+							fadeUp: {
+								"0%": { opacity: "0", transform: "translateY(16px)" },
+								"100%": { opacity: "1", transform: "translateY(0)" },
+							},
+						},
+						animation: {
+							fadeUp: "fadeUp 650ms ease-out both",
+						},
+					},
+				},
+			};
+		</script>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet" />
+	</head>
+	<body class="min-h-screen bg-gradient-to-b from-cielo via-mar to-oceano font-body text-tinta">
+		<div class="mx-auto min-h-screen w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+			<header class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/20 bg-noche/90 px-5 py-4 shadow-suave">
+				<div>
+					<p class="font-display text-2xl font-semibold text-cielo">Nube Gallery</p>
+					<p class="text-sm text-slate-200/80">Dashboard de perfil</p>
+					<p id="usuario-activo" class="text-xs text-slate-300/70"></p>
+				</div>
+				<nav class="flex items-center gap-2 text-sm sm:gap-3">
+					<a href="admin.html" class="rounded-lg border border-cielo/20 px-3 py-2 text-slate-200 transition hover:bg-white/10">Explorar arte</a>
+					<a href="loguin.html" class="rounded-lg border border-cielo/20 px-3 py-2 text-slate-200 transition hover:bg-white/10">Iniciar sesion</a>
+					<button id="cerrar-sesion" type="button" class="rounded-lg bg-arena px-4 py-2 font-semibold text-noche transition hover:bg-cielo">Cerrar sesion</button>
+				</nav>
+			</header>
+
+			<main class="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+				<section class="space-y-6">
+					<div class="animate-fadeUp rounded-2xl border border-white/20 bg-noche/90 p-6 shadow-suave">
+						<h1 class="font-display text-3xl font-bold sm:text-4xl">Mi perfil creativo</h1>
+						<p class="mt-2 text-slate-200/80">Administra tu identidad de artista y revisa el estado de tus obras.</p>
+
+						<div class="mt-5 grid gap-4 sm:grid-cols-[auto_1fr]">
+							<div class="h-20 w-20 rounded-2xl bg-gradient-to-br from-cielo to-mar"></div>
+							<div class="space-y-1">
+								<p id="perfil-nombre" class="font-display text-2xl font-bold text-slate-100">Artista</p>
+								<p id="perfil-correo" class="text-sm text-slate-300/80">correo@galeria.com</p>
+								<p id="perfil-fecha" class="text-xs text-slate-400">Miembro desde --</p>
+							</div>
+						</div>
+
+						<form id="bio-form" class="mt-4 space-y-3">
+							<label class="block">
+								<span class="mb-2 block text-sm font-semibold text-slate-100">Bio de perfil</span>
+								<textarea
+									id="perfil-bio"
+									rows="3"
+									placeholder="Escribe una descripcion breve sobre tu estilo artistico"
+									class="w-full rounded-lg border border-cielo/20 bg-white/10 px-4 py-3 text-white placeholder:text-slate-300/60 outline-none transition focus:border-mar focus:bg-white/15"
+								></textarea>
+							</label>
+							<div class="flex items-center gap-3">
+								<button type="submit" class="rounded-lg bg-mar px-4 py-2 font-semibold text-noche transition hover:bg-cielo">Guardar bio</button>
+								<p id="bio-msg" class="text-xs text-cielo"></p>
+							</div>
+						</form>
+
+						<div class="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+							<div class="rounded-xl bg-white/10 p-4">
+								<p class="text-slate-300/80">Publicadas</p>
+								<p id="perfil-publicadas" class="mt-1 text-2xl font-bold text-cielo">0</p>
+							</div>
+							<div class="rounded-xl bg-white/10 p-4">
+								<p class="text-slate-300/80">Borradores</p>
+								<p id="perfil-borradores" class="mt-1 text-2xl font-bold text-cielo">0</p>
+							</div>
+							<div class="rounded-xl bg-white/10 p-4">
+								<p class="text-slate-300/80">Archivos</p>
+								<p id="perfil-archivos" class="mt-1 text-2xl font-bold text-cielo">0</p>
+							</div>
+						</div>
+					</div>
+
+					<div class="animate-fadeUp [animation-delay:120ms] rounded-2xl border border-white/20 bg-noche/90 p-6 shadow-suave">
+						<div class="flex items-center justify-between">
+							<h2 class="font-display text-2xl font-bold">Mis obras recientes</h2>
+							<div class="flex items-center gap-3">
+								<button id="quemar-publicaciones" type="button" class="rounded-lg border border-cielo/30 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/10">
+									Quemar publicaciones
+								</button>
+								<a href="admin.html" class="text-sm font-semibold text-cielo underline underline-offset-4">Ver comunidad</a>
+							</div>
+						</div>
+						<p id="seed-msg" class="mt-2 text-xs text-cielo"></p>
+						<div id="mis-obras-grid" class="mt-4 grid gap-4 sm:grid-cols-2"></div>
+					</div>
+				</section>
+
+				<section class="space-y-6">
+					<section class="animate-fadeUp [animation-delay:180ms] rounded-2xl border border-white/20 bg-noche/90 p-6 shadow-suave sm:p-7">
+					<h1 class="font-display text-3xl font-bold sm:text-4xl">Comparte una nueva obra</h1>
+					<p class="mt-2 text-slate-200/80">
+						Publica fotos, pinturas o documentos para tu portafolio curatorial.
+					</p>
+
+					<form id="publicacion-form" class="mt-6 space-y-5" action="#" method="post" enctype="multipart/form-data">
+						<div class="grid gap-5 sm:grid-cols-2">
+							<label class="block sm:col-span-2">
+								<span class="mb-2 block text-sm font-semibold text-slate-100">Titulo de la obra</span>
+								<input
+									type="text"
+									name="titulo"
+									placeholder="Ej: Amanecer en marea calma"
+									class="w-full rounded-lg border border-cielo/20 bg-white/10 px-4 py-3 text-white placeholder:text-slate-300/60 outline-none transition focus:border-mar focus:bg-white/15"
+									required
+								/>
+							</label>
+
+							<label class="block">
+								<span class="mb-2 block text-sm font-semibold text-slate-100">Categoria</span>
+								<select
+									name="categoria"
+									class="w-full rounded-lg border border-cielo/20 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-mar focus:bg-white/15"
+								>
+									<option value="foto" class="text-noche">Fotografia</option>
+									<option value="pintura" class="text-noche">Pintura</option>
+									<option value="documento" class="text-noche">Documento</option>
+								</select>
+							</label>
+
+							<label class="block">
+								<span class="mb-2 block text-sm font-semibold text-slate-100">Visibilidad</span>
+								<select
+									name="visibilidad"
+									class="w-full rounded-lg border border-cielo/20 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-mar focus:bg-white/15"
+								>
+									<option value="publico" class="text-noche">Publico</option>
+									<option value="privado" class="text-noche">Privado</option>
+									<option value="solo-curadores" class="text-noche">Solo curadores</option>
+								</select>
+							</label>
+
+							<label class="block sm:col-span-2">
+								<span class="mb-2 block text-sm font-semibold text-slate-100">Descripcion</span>
+								<textarea
+									name="descripcion"
+									rows="4"
+									placeholder="Describe la tecnica, contexto o inspiracion de la obra"
+									class="w-full rounded-lg border border-cielo/20 bg-white/10 px-4 py-3 text-white placeholder:text-slate-300/60 outline-none transition focus:border-mar focus:bg-white/15"
+								></textarea>
+							</label>
+						</div>
+
+						<label class="block rounded-xl border-2 border-dashed border-cielo/35 bg-white/5 p-6 text-center transition hover:border-mar/70 hover:bg-white/10">
+							<span class="mb-2 block text-base font-semibold text-slate-100">Carga tus imagenes para publicar</span>
+							<span class="mb-4 block text-sm text-slate-300/80">Puedes seleccionar varias fotos o pinturas (JPG, PNG, WEBP)</span>
+							<input
+								id="imagenes-publicacion"
+								type="file"
+								name="imagenes[]"
+								accept=".jpg,.jpeg,.png,.webp"
+								multiple
+								class="mx-auto block w-full max-w-xs cursor-pointer text-sm text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-mar file:px-4 file:py-2 file:font-semibold file:text-noche hover:file:bg-cielo"
+								required
+							/>
+						</label>
+
+						<div id="preview-imagenes" class="hidden rounded-xl border border-cielo/25 bg-white/5 p-4">
+							<p id="contador-imagenes" class="mb-3 text-sm font-semibold text-cielo"></p>
+							<div id="grid-imagenes" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+						</div>
+
+						<label class="block rounded-xl border border-cielo/25 bg-white/5 p-4">
+							<span class="mb-2 block text-sm font-semibold text-slate-100">Adjuntar documentos (opcional)</span>
+							<span class="mb-3 block text-xs text-slate-300/80">PDF, DOC, DOCX para fichas tecnicas o respaldos</span>
+							<input
+								id="docs-publicacion"
+								type="file"
+								name="documentos[]"
+								accept=".pdf,.doc,.docx"
+								multiple
+								class="block w-full cursor-pointer text-sm text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-arena file:px-4 file:py-2 file:font-semibold file:text-noche hover:file:bg-cielo"
+							/>
+						</label>
+
+						<div class="flex flex-wrap items-center gap-3">
+							<button
+								type="submit"
+								class="inline-flex items-center justify-center rounded-lg bg-mar px-6 py-3 text-base font-bold text-noche transition hover:bg-cielo"
+							>
+								Publicar ahora
+							</button>
+							<button
+								type="button"
+								id="guardar-borrador"
+								class="inline-flex items-center justify-center rounded-lg border border-cielo/30 px-6 py-3 text-base font-semibold text-slate-100 transition hover:bg-white/10"
+							>
+								Guardar borrador
+							</button>
+						</div>
+						<p id="publicacion-msg" class="text-sm text-cielo"></p>
+					</form>
+					</section>
+
+					<div class="animate-fadeUp [animation-delay:240ms] rounded-2xl border border-white/20 bg-noche/90 p-6 shadow-suave">
+						<h2 class="font-display text-2xl font-bold">Tus espacios de contenido</h2>
+						<div class="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+							<div class="rounded-xl bg-white/10 p-4">
+								<p class="text-slate-300/80">Fotos</p>
+								<p id="total-fotos" class="mt-1 text-2xl font-bold text-cielo">0</p>
+							</div>
+							<div class="rounded-xl bg-white/10 p-4">
+								<p class="text-slate-300/80">Pinturas</p>
+								<p id="total-pinturas" class="mt-1 text-2xl font-bold text-cielo">0</p>
+							</div>
+							<div class="rounded-xl bg-white/10 p-4">
+								<p class="text-slate-300/80">Documentos</p>
+								<p id="total-documentos" class="mt-1 text-2xl font-bold text-cielo">0</p>
+							</div>
+						</div>
+					</div>
+
+					<div class="animate-fadeUp [animation-delay:280ms] rounded-2xl border border-white/20 bg-noche/90 p-6 shadow-suave">
+						<h2 class="font-display text-2xl font-bold">Publicaciones recientes</h2>
+						<ul id="publicaciones-lista" class="mt-4 space-y-3 text-sm">
+							<li class="rounded-xl bg-white/10 p-4 text-slate-300/80">Aun no tienes publicaciones guardadas.</li>
+						</ul>
+					</div>
+				</section>
+			</main>
+		</div>
+
+		<script>
+			const DB_KEY = "nube_gallery_db";
+			const USER_KEY = "nube_gallery_current_user";
+			const SEED_KEY = "nube_gallery_seed_v1";
+			const IMAGENES_SEMILLA = ["flor_loto.jpg", "paint1.jpg", "paint2.jpg", "paint4.jpg", "paint5.jpg", "paint6.jpg"];
+
+			const usuarioActivo = document.getElementById("usuario-activo");
+			const perfilNombre = document.getElementById("perfil-nombre");
+			const perfilCorreo = document.getElementById("perfil-correo");
+			const perfilFecha = document.getElementById("perfil-fecha");
+			const perfilPublicadas = document.getElementById("perfil-publicadas");
+			const perfilBorradores = document.getElementById("perfil-borradores");
+			const perfilArchivos = document.getElementById("perfil-archivos");
+			const perfilBio = document.getElementById("perfil-bio");
+			const bioForm = document.getElementById("bio-form");
+			const bioMsg = document.getElementById("bio-msg");
+			const misObrasGrid = document.getElementById("mis-obras-grid");
+			const cerrarSesionBtn = document.getElementById("cerrar-sesion");
+			const quemarPublicacionesBtn = document.getElementById("quemar-publicaciones");
+			const seedMsg = document.getElementById("seed-msg");
+
+			const publicacionForm = document.getElementById("publicacion-form");
+			const msg = document.getElementById("publicacion-msg");
+			const guardarBorradorBtn = document.getElementById("guardar-borrador");
+
+			const inputImagenes = document.getElementById("imagenes-publicacion");
+			const inputDocs = document.getElementById("docs-publicacion");
+			const preview = document.getElementById("preview-imagenes");
+			const grid = document.getElementById("grid-imagenes");
+			const contador = document.getElementById("contador-imagenes");
+
+			const totalFotos = document.getElementById("total-fotos");
+			const totalPinturas = document.getElementById("total-pinturas");
+			const totalDocumentos = document.getElementById("total-documentos");
+			const publicacionesLista = document.getElementById("publicaciones-lista");
+
+			let estadoEnvio = "publicado";
+
+			function getDB() {
+				const raw = localStorage.getItem(DB_KEY);
+				if (!raw) {
+					return { usuarios: [], publicaciones: [] };
+				}
+				try {
+					const parsed = JSON.parse(raw);
+					return {
+						usuarios: Array.isArray(parsed.usuarios) ? parsed.usuarios : [],
+						publicaciones: Array.isArray(parsed.publicaciones) ? parsed.publicaciones : [],
+					};
+				} catch {
+					return { usuarios: [], publicaciones: [] };
+				}
+			}
+
+			function saveDB(db) {
+				localStorage.setItem(DB_KEY, JSON.stringify(db));
+			}
+
+			function getCurrentUser() {
+				const db = getDB();
+				const userId = Number(localStorage.getItem(USER_KEY));
+				const user = db.usuarios.find((item) => item.id === userId);
+				return { db, user };
+			}
+
+			function formatFecha(isoDate) {
+				return new Date(isoDate).toLocaleString("es-ES", {
+					year: "numeric",
+					month: "short",
+					day: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+				});
+			}
+
+			function renderPerfil(user, publicaciones) {
+				perfilNombre.textContent = user.nombre;
+				perfilCorreo.textContent = user.correo;
+				perfilFecha.textContent = `Miembro desde ${formatFecha(user.creadoEn)}`;
+				perfilBio.value = user.bio || "";
+
+				const publicadas = publicaciones.filter((item) => item.estado === "publicado").length;
+				const borradores = publicaciones.filter((item) => item.estado === "borrador").length;
+				const archivos = publicaciones.reduce((acc, item) => {
+					const totalImagenes = Array.isArray(item.imagenes) ? item.imagenes.length : 0;
+					const totalDocs = Array.isArray(item.documentos) ? item.documentos.length : 0;
+					return acc + totalImagenes + totalDocs;
+				}, 0);
+
+				perfilPublicadas.textContent = String(publicadas);
+				perfilBorradores.textContent = String(borradores);
+				perfilArchivos.textContent = String(archivos);
+			}
+
+			function renderMisObras(publicaciones) {
+				misObrasGrid.innerHTML = "";
+				if (!publicaciones.length) {
+					misObrasGrid.innerHTML = '<p class="rounded-xl bg-white/10 p-4 text-sm text-slate-300/80 sm:col-span-2">Aun no tienes obras cargadas.</p>';
+					return;
+				}
+
+				publicaciones
+					.slice()
+					.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn))
+					.slice(0, 4)
+					.forEach((item) => {
+						const article = document.createElement("article");
+						article.className = "overflow-hidden rounded-xl border border-cielo/20 bg-white/10";
+
+						const img = document.createElement("img");
+						img.className = "h-36 w-full object-cover";
+						img.alt = item.titulo;
+						img.src =
+							Array.isArray(item.imagenes) && item.imagenes[0] && item.imagenes[0].contenido
+								? item.imagenes[0].contenido
+								: "imagenes/flor_loto.jpg";
+
+						const box = document.createElement("div");
+						box.className = "p-3";
+						box.innerHTML = `
+							<p class="truncate text-sm font-semibold text-slate-100">${item.titulo}</p>
+							<p class="text-xs text-slate-300/80">${item.categoria} - ${item.estado}</p>
+						`;
+
+						article.appendChild(img);
+						article.appendChild(box);
+						misObrasGrid.appendChild(article);
+					});
+			}
+
+			function renderResumen(publicaciones) {
+				let fotos = 0;
+				let pinturas = 0;
+				let documentos = 0;
+
+				publicaciones.forEach((item) => {
+					if (item.categoria === "foto") fotos += 1;
+					if (item.categoria === "pintura") pinturas += 1;
+					documentos += Array.isArray(item.documentos) ? item.documentos.length : 0;
+				});
+
+				totalFotos.textContent = String(fotos);
+				totalPinturas.textContent = String(pinturas);
+				totalDocumentos.textContent = String(documentos);
+			}
+
+			function renderPublicaciones(publicaciones) {
+				publicacionesLista.innerHTML = "";
+				if (!publicaciones.length) {
+					publicacionesLista.innerHTML = '<li class="rounded-xl bg-white/10 p-4 text-slate-300/80">Aun no tienes publicaciones guardadas.</li>';
+					return;
+				}
+
+				publicaciones
+					.slice()
+					.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn))
+					.slice(0, 6)
+					.forEach((item) => {
+						const li = document.createElement("li");
+						li.className = "flex items-center justify-between rounded-xl bg-white/10 p-4";
+
+						const left = document.createElement("div");
+						const titulo = document.createElement("p");
+						titulo.className = "font-semibold text-slate-100";
+						titulo.textContent = item.titulo;
+
+						const meta = document.createElement("p");
+						meta.className = "text-slate-300/80";
+						meta.textContent = `${item.categoria} - ${formatFecha(item.creadoEn)}`;
+
+						left.appendChild(titulo);
+						left.appendChild(meta);
+
+						const estado = document.createElement("span");
+						estado.className =
+							item.estado === "borrador"
+								? "rounded-full bg-arena/20 px-3 py-1 text-xs font-semibold text-arena"
+								: "rounded-full bg-cielo/20 px-3 py-1 text-xs font-semibold text-cielo";
+						estado.textContent = item.estado === "borrador" ? "Borrador" : "Publicado";
+
+						li.appendChild(left);
+						li.appendChild(estado);
+						publicacionesLista.appendChild(li);
+					});
+			}
+
+			function previewFiles(files) {
+				grid.innerHTML = "";
+				if (!files.length) {
+					preview.classList.add("hidden");
+					contador.textContent = "";
+					return;
+				}
+				preview.classList.remove("hidden");
+				contador.textContent = `${files.length} imagen(es) listas para publicar`;
+
+				files.slice(0, 9).forEach((file) => {
+					const card = document.createElement("figure");
+					card.className = "overflow-hidden rounded-lg border border-cielo/25 bg-white/10";
+
+					const img = document.createElement("img");
+					img.src = URL.createObjectURL(file);
+					img.alt = file.name;
+					img.className = "h-28 w-full object-cover";
+
+					const caption = document.createElement("figcaption");
+					caption.className = "truncate px-2 py-1 text-xs text-slate-200/90";
+					caption.textContent = file.name;
+
+					card.appendChild(img);
+					card.appendChild(caption);
+					grid.appendChild(card);
+				});
+			}
+
+			function fileToDataURL(file) {
+				return new Promise((resolve, reject) => {
+					const reader = new FileReader();
+					reader.onload = () => resolve(String(reader.result));
+					reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
+					reader.readAsDataURL(file);
+				});
+			}
+
+			function blobToDataURL(blob) {
+				return new Promise((resolve, reject) => {
+					const reader = new FileReader();
+					reader.onload = () => resolve(String(reader.result));
+					reader.onerror = () => reject(new Error("No se pudo leer el blob"));
+					reader.readAsDataURL(blob);
+				});
+			}
+
+			async function serializeFiles(fileList) {
+				const files = Array.from(fileList || []);
+				const result = [];
+				for (const file of files) {
+					const contenido = await fileToDataURL(file);
+					result.push({
+						nombre: file.name,
+						tipo: file.type || "application/octet-stream",
+						tamano: file.size,
+						contenido,
+					});
+				}
+				return result;
+			}
+
+			function ensureDemoUsers(db) {
+				const demoUsers = [
+					{ id: 900001, nombre: "Luna Mar", correo: "luna.mar@nube.demo", contrasena: "demo12345", creadoEn: new Date().toISOString() },
+					{ id: 900002, nombre: "Tomas Azul", correo: "tomas.azul@nube.demo", contrasena: "demo12345", creadoEn: new Date().toISOString() },
+					{ id: 900003, nombre: "Carla Oleo", correo: "carla.oleo@nube.demo", contrasena: "demo12345", creadoEn: new Date().toISOString() },
+				];
+
+				demoUsers.forEach((demo) => {
+					const exists = db.usuarios.some((user) => user.correo === demo.correo);
+					if (!exists) db.usuarios.push(demo);
+				});
+			}
+
+			function inferCategoria(fileName) {
+				if (fileName.startsWith("paint")) return "pintura";
+				return "foto";
+			}
+
+			function crearComentariosDemo(publicacionId) {
+				return [
+					{ id: publicacionId + 11, userId: 900001, autor: "Luna Mar", texto: "Hermosa composicion de color.", creadoEn: new Date().toISOString() },
+					{ id: publicacionId + 12, userId: 900002, autor: "Tomas Azul", texto: "Me encanta la textura y el ritmo visual.", creadoEn: new Date().toISOString() },
+				];
+			}
+
+			async function quemarPublicacionesDesdeCarpeta() {
+				const { db, user } = getCurrentUser();
+				if (!user) {
+					seedMsg.textContent = "Inicia sesion para quemar publicaciones.";
+					seedMsg.className = "mt-2 text-xs text-arena";
+					return;
+				}
+
+				seedMsg.textContent = "Quemando publicaciones desde carpeta imagenes...";
+				seedMsg.className = "mt-2 text-xs text-cielo";
+
+				ensureDemoUsers(db);
+				const autoresPool = [user.id, 900001, 900002, 900003];
+				let insertadas = 0;
+
+				for (let i = 0; i < IMAGENES_SEMILLA.length; i += 1) {
+					const fileName = IMAGENES_SEMILLA[i];
+					const seedRef = `seed:${fileName}`;
+					const yaExiste = db.publicaciones.some((pub) => pub.seedRef === seedRef);
+					if (yaExiste) continue;
+
+					try {
+						const response = await fetch(`imagenes/${fileName}`);
+						if (!response.ok) continue;
+
+						const blob = await response.blob();
+						const contenido = await blobToDataURL(blob);
+						const autorId = autoresPool[i % autoresPool.length];
+						const categoria = inferCategoria(fileName);
+
+						const publicacionId = Date.now() + i;
+						db.publicaciones.push({
+							id: publicacionId,
+							usuarioId: autorId,
+							titulo: `Obra ${fileName.replace(".jpg", "").replace("_", " ")}`,
+							categoria,
+							visibilidad: "publico",
+							descripcion: `Publicacion generada desde carpeta imagenes: ${fileName}`,
+							estado: "publicado",
+							imagenes: [
+								{
+									nombre: fileName,
+									tipo: blob.type || "image/jpeg",
+									tamano: blob.size,
+									contenido,
+								},
+							],
+							documentos: [],
+							likes: autorId === user.id ? [] : [user.id],
+							comentarios: crearComentariosDemo(publicacionId),
+							creadoEn: new Date(Date.now() - i * 3600000).toISOString(),
+							seedRef,
+						});
+
+						insertadas += 1;
+					} catch {
+						// Continua con la siguiente imagen si una falla
+					}
+				}
+
+				saveDB(db);
+				localStorage.setItem(SEED_KEY, "done");
+
+				const publicacionesUsuario = db.publicaciones.filter((item) => item.usuarioId === user.id);
+				renderPerfil(user, publicacionesUsuario);
+				renderResumen(publicacionesUsuario);
+				renderPublicaciones(publicacionesUsuario);
+				renderMisObras(publicacionesUsuario);
+
+				seedMsg.textContent = insertadas
+					? `Se quemaron ${insertadas} publicaciones desde la carpeta imagenes.`
+					: "Las publicaciones de imagenes ya estaban quemadas.";
+				seedMsg.className = "mt-2 text-xs text-cielo";
+			}
+
+			function cargarEstadoInicial() {
+				const { db, user } = getCurrentUser();
+				if (!user) {
+					usuarioActivo.textContent = "Sin sesion activa";
+					msg.textContent = "Inicia sesion primero para guardar publicaciones.";
+					msg.className = "text-sm text-arena";
+					publicacionForm.querySelector('button[type="submit"]').disabled = true;
+					guardarBorradorBtn.disabled = true;
+					bioForm.querySelector('button[type="submit"]').disabled = true;
+					return;
+				}
+
+				usuarioActivo.textContent = `Usuario activo: ${user.nombre} (${user.correo})`;
+				const publicacionesUsuario = db.publicaciones.filter((item) => item.usuarioId === user.id);
+				renderPerfil(user, publicacionesUsuario);
+				renderResumen(publicacionesUsuario);
+				renderPublicaciones(publicacionesUsuario);
+				renderMisObras(publicacionesUsuario);
+			}
+
+			bioForm.addEventListener("submit", (event) => {
+				event.preventDefault();
+				const { db, user } = getCurrentUser();
+				if (!user) return;
+
+				const value = perfilBio.value.trim();
+				const index = db.usuarios.findIndex((item) => item.id === user.id);
+				if (index >= 0) {
+					db.usuarios[index].bio = value;
+					saveDB(db);
+					bioMsg.textContent = "Bio actualizada.";
+				}
+			});
+
+			cerrarSesionBtn.addEventListener("click", () => {
+				localStorage.removeItem(USER_KEY);
+				window.location.href = "loguin.html";
+			});
+
+			quemarPublicacionesBtn.addEventListener("click", () => {
+				quemarPublicacionesDesdeCarpeta();
+			});
+
+			inputImagenes.addEventListener("change", (event) => {
+				previewFiles(Array.from(event.target.files || []));
+			});
+
+			guardarBorradorBtn.addEventListener("click", () => {
+				estadoEnvio = "borrador";
+				publicacionForm.requestSubmit();
+			});
+
+			publicacionForm.addEventListener("submit", async (event) => {
+				event.preventDefault();
+				const { db, user } = getCurrentUser();
+				if (!user) {
+					msg.textContent = "No hay usuario activo. Inicia sesion para continuar.";
+					msg.className = "text-sm text-red-300";
+					return;
+				}
+
+				const formData = new FormData(publicacionForm);
+				const titulo = String(formData.get("titulo") || "").trim();
+				const categoria = String(formData.get("categoria") || "foto");
+				const visibilidad = String(formData.get("visibilidad") || "publico");
+				const descripcion = String(formData.get("descripcion") || "").trim();
+				const imagenes = Array.from(inputImagenes.files || []);
+
+				if (!imagenes.length) {
+					msg.textContent = "Debes cargar al menos una imagen.";
+					msg.className = "text-sm text-red-300";
+					return;
+				}
+
+				msg.textContent = "Guardando publicacion y archivos...";
+				msg.className = "text-sm text-cielo";
+
+				try {
+					const imagenesSerializadas = await serializeFiles(inputImagenes.files);
+					const docsSerializados = await serializeFiles(inputDocs.files);
+
+					const publicacion = {
+						id: Date.now(),
+						usuarioId: user.id,
+						titulo,
+						categoria,
+						visibilidad,
+						descripcion,
+						estado: estadoEnvio,
+						imagenes: imagenesSerializadas,
+						documentos: docsSerializados,
+						creadoEn: new Date().toISOString(),
+					};
+
+					db.publicaciones.push(publicacion);
+					saveDB(db);
+
+					const publicacionesUsuario = db.publicaciones.filter((item) => item.usuarioId === user.id);
+					renderPerfil(user, publicacionesUsuario);
+					renderResumen(publicacionesUsuario);
+					renderPublicaciones(publicacionesUsuario);
+					renderMisObras(publicacionesUsuario);
+
+					msg.textContent =
+						estadoEnvio === "borrador"
+							? "Borrador guardado correctamente."
+							: "Publicacion guardada correctamente.";
+					msg.className = "text-sm text-cielo";
+
+					publicacionForm.reset();
+					previewFiles([]);
+				} catch {
+					msg.textContent = "Hubo un error al leer archivos con FileReader.";
+					msg.className = "text-sm text-red-300";
+				} finally {
+					estadoEnvio = "publicado";
+				}
+			});
+
+			cargarEstadoInicial();
+		</script>
+	</body>
+</html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Iniciar sesion | Nube Gallery</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							arena: "#c7b5a5",
+							taupe: "#a69281",
+							cielo: "#8ec9eb",
+							mar: "#38a8bf",
+							oceano: "#0f7e8d",
+							noche: "#061633",
+							tinta: "#eaf6ff",
+						},
+						fontFamily: {
+							display: ["Poppins", "Segoe UI", "sans-serif"],
+							body: ["Nunito", "Segoe UI", "sans-serif"],
+						},
+						boxShadow: {
+							suave: "0 18px 45px rgba(8, 30, 57, 0.35)",
+						},
+						keyframes: {
+							fadeUp: {
+								"0%": { opacity: "0", transform: "translateY(18px)" },
+								"100%": { opacity: "1", transform: "translateY(0)" },
+							},
+						},
+						animation: {
+							fadeUp: "fadeUp 700ms ease-out both",
+						},
+					},
+				},
+			};
+		</script>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet" />
+	</head>
+	<body class="min-h-screen bg-gradient-to-b from-cielo via-mar to-oceano font-body text-tinta">
+		<main class="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-8 sm:px-6 lg:px-8">
+			<section class="grid w-full overflow-hidden rounded-2xl border border-white/20 bg-noche/95 shadow-suave md:grid-cols-2">
+				<div class="animate-fadeUp p-8 sm:p-10">
+					<p class="mb-6 font-display text-2xl font-semibold text-cielo">Nube Gallery</p>
+					<h1 class="font-display text-4xl font-bold leading-tight sm:text-5xl">Inicia sesion</h1>
+					<p class="mt-3 max-w-sm text-base text-slate-200/80 sm:text-lg">
+						Entra para gestionar tu perfil, colecciones y publicaciones.
+					</p>
+
+					<form id="login-form" class="mt-8 space-y-5" action="#" method="post">
+						<label class="block">
+							<span class="mb-2 block text-sm font-semibold text-slate-100">Correo electronico</span>
+							<input
+								type="email"
+								name="correo"
+								placeholder="tuemail@galeria.com"
+								class="w-full rounded-lg border border-cielo/20 bg-white/10 px-4 py-3 text-base text-white placeholder:text-slate-300/60 outline-none ring-0 transition focus:border-mar focus:bg-white/15"
+								required
+							/>
+						</label>
+
+						<label class="block">
+							<span class="mb-2 block text-sm font-semibold text-slate-100">Contrasena</span>
+							<input
+								type="password"
+								name="contrasena"
+								placeholder="Tu contrasena"
+								minlength="8"
+								class="w-full rounded-lg border border-cielo/20 bg-white/10 px-4 py-3 text-base text-white placeholder:text-slate-300/60 outline-none ring-0 transition focus:border-mar focus:bg-white/15"
+								required
+							/>
+						</label>
+
+						<div class="flex items-center justify-between text-sm">
+							<label class="inline-flex items-center gap-2 text-slate-200/90">
+								<input type="checkbox" class="h-4 w-4 rounded border-cielo/30 bg-white/10" />
+								Recordarme
+							</label>
+							<a href="#" class="font-semibold text-cielo underline underline-offset-4">Olvide mi contrasena</a>
+						</div>
+
+						<button
+							type="submit"
+							class="inline-flex w-full items-center justify-center rounded-lg bg-mar px-6 py-3 text-lg font-bold text-noche transition hover:bg-cielo"
+						>
+							Entrar
+						</button>
+						<p id="login-msg" class="text-sm text-cielo"></p>
+					</form>
+
+					<p class="mt-6 text-sm text-slate-200/80">
+						No tienes una cuenta?
+						<a href="index.html" class="font-semibold text-cielo underline underline-offset-4">Registrate aqui</a>
+					</p>
+				</div>
+
+				<aside class="relative hidden min-h-[620px] md:block">
+					<img src="imagenes/flor_loto.jpg" alt="Flor de loto" class="h-full w-full object-cover" />
+					<div class="absolute inset-0 bg-gradient-to-t from-noche/25 via-transparent to-cielo/30"></div>
+				</aside>
+			</section>
+		</main>
+
+		<script>
+			const DB_KEY = "nube_gallery_db";
+			const loginForm = document.getElementById("login-form");
+			const loginMsg = document.getElementById("login-msg");
+
+			function getDB() {
+				const raw = localStorage.getItem(DB_KEY);
+				if (!raw) {
+					return { usuarios: [], publicaciones: [] };
+				}
+				try {
+					const parsed = JSON.parse(raw);
+					return {
+						usuarios: Array.isArray(parsed.usuarios) ? parsed.usuarios : [],
+						publicaciones: Array.isArray(parsed.publicaciones) ? parsed.publicaciones : [],
+					};
+				} catch {
+					return { usuarios: [], publicaciones: [] };
+				}
+			}
+
+			loginForm.addEventListener("submit", (event) => {
+				event.preventDefault();
+				const formData = new FormData(loginForm);
+				const correo = String(formData.get("correo") || "").trim().toLowerCase();
+				const contrasena = String(formData.get("contrasena") || "");
+
+				const db = getDB();
+				const usuario = db.usuarios.find((user) => user.correo === correo && user.contrasena === contrasena);
+
+				if (!usuario) {
+					loginMsg.textContent = "Credenciales invalidas.";
+					loginMsg.className = "text-sm text-red-300";
+					return;
+				}
+
+				localStorage.setItem("nube_gallery_current_user", String(usuario.id));
+				loginMsg.textContent = "Ingreso correcto. Abriendo dashboard...";
+				loginMsg.className = "text-sm text-cielo";
+
+				setTimeout(() => {
+					window.location.href = "dasbord.htm";
+				}, 500);
+			});
+		</script>
+	</body>
+</html>
