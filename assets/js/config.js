@@ -4,9 +4,12 @@
  */
 
 export const CONFIG = {
-	// Claves de localStorage
+	// ── URL de la API (Azure Functions) ───────────────────────────────────────
+	// Cuando tu compañera cree la Function App, reemplazar esta URL
+	API_BASE: 'https://func-nubegallery-jaramc.azurewebsites.net/api',
+
+	// Claves de localStorage (solo para sesión, ya no para datos)
 	KEYS: {
-		DB: 'nube_gallery_db',
 		CURRENT_USER: 'nube_gallery_current_user',
 		THEME: 'nube_gallery_theme',
 		LAST_ACTIVITY: 'nube_gallery_last_activity'
@@ -20,12 +23,16 @@ export const CONFIG = {
 
 	// Límites de archivos
 	FILE_LIMITS: {
-		MAX_IMAGE_SIZE: 5 * 1024 * 1024, // 5MB
-		MAX_DOCUMENT_SIZE: 10 * 1024 * 1024, // 10MB
+		MAX_IMAGE_SIZE: 5 * 1024 * 1024,      // 5MB
+		MAX_DOCUMENT_SIZE: 10 * 1024 * 1024,  // 10MB
 		MAX_IMAGES_PER_POST: 10,
 		MAX_DOCUMENTS_PER_POST: 5,
 		ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-		ALLOWED_DOCUMENT_TYPES: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+		ALLOWED_DOCUMENT_TYPES: [
+			'application/pdf',
+			'application/msword',
+			'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+		]
 	},
 
 	// Configuración de validación
@@ -35,17 +42,7 @@ export const CONFIG = {
 		MAX_TITULO_LENGTH: 180,
 		MIN_NOMBRE_LENGTH: 2,
 		MAX_BIO_LENGTH: 500
-	},
-
-	// Usuarios demo
-	DEMO_USERS: [
-		{ id: 900001, nombre: 'Luna Mar', correo: 'luna.mar@nube.demo', contrasena: 'demo12345' },
-		{ id: 900002, nombre: 'Tomás Azul', correo: 'tomas.azul@nube.demo', contrasena: 'demo12345' },
-		{ id: 900003, nombre: 'Carla Óleo', correo: 'carla.oleo@nube.demo', contrasena: 'demo12345' }
-	],
-
-	// Imágenes de ejemplo
-	SEED_IMAGES: ['flor_loto.jpg', 'paint1.jpg', 'paint2.jpg', 'paint4.jpg', 'paint5.jpg', 'paint6.jpg']
+	}
 };
 
 /**

@@ -1,65 +1,66 @@
 /**
- * Módulo de gestión de base de datos (localStorage)
+ * Módulo de gestión de datos — migrado a Azure SQL via Azure Functions
  * @module database
+ *
+ * CAMBIOS vs versión localStorage:
+ *  - getDB() / saveDB() eliminadas — cada función llama su propio endpoint
+ *  - ensureDemoUsers() / cleanupDB() eliminadas — la BD real las maneja
+ *  - getCurrentUser() lee del localStorage (sesión) pero el user viene de la API
+ *  - login() / logout() mantienen localStorage solo para la sesión activa
  */
 
 import { CONFIG } from './config.js';
 
+// ─── Helper interno ──────────────────────────────────────────────────────────
+
 /**
- * Obtiene la base de datos desde localStorage
- * @returns {{usuarios: Array, publicaciones: Array}} Base de datos
+ * Hace una llamada a la API con manejo de errores centralizado
+ * @param {string} endpoint - Ruta del endpoint (sin API_BASE)
+ * @param {Object} options - Opciones de fetch
+ * @returns {Promise<{ok: boolean, data: any, error: string|null}>}
  */
-export function getDB() {
+async function apiFetch(endpoint, options = {}) {
 	try {
-		const raw = localStorage.getItem(CONFIG.KEYS.DB);
-		if (!raw) {
-			return { usuarios: [], publicaciones: [] };
+		const res = await fetch(`${CONFIG.API_BASE}/${endpoint}`, {
+			headers: { 'Content-Type': 'application/json' },
+			...options
+		});
+
+		const data = await res.json();
+
+		if (!res.ok) {
+			return { ok: false, data: null, error: data.error || 'Error del servidor' };
 		}
 
-		const parsed = JSON.parse(raw);
-		return {
-			usuarios: Array.isArray(parsed.usuarios) ? parsed.usuarios : [],
-			publicaciones: Array.isArray(parsed.publicaciones) ? parsed.publicaciones : []
-		};
-	} catch (error) {
-		console.error('Error al obtener DB:', error);
-		return { usuarios: [], publicaciones: [] };
+		return { ok: true, data, error: null };
+
+	} catch (err) {
+		console.error(`Error en API [${endpoint}]:`, err);
+		return { ok: false, data: null, error: 'No se pudo conectar con el servidor' };
 	}
 }
 
-/**
- * Guarda la base de datos en localStorage
- * @param {{usuarios: Array, publicaciones: Array}} db - Base de datos a guardar
- */
-export function saveDB(db) {
-	try {
-		localStorage.setItem(CONFIG.KEYS.DB, JSON.stringify(db));
-		return true;
-	} catch (error) {
-		console.error('Error al guardar DB:', error);
-		return false;
-	}
-}
+// ─── Sesión (localStorage) ───────────────────────────────────────────────────
 
 /**
- * Obtiene el usuario actual desde la sesión
- * @returns {{user: Object|null, userId: number|null}} Usuario actual
+ * Obtiene el usuario actual desde la sesión local
+ * @returns {{user: Object|null, userId: number|null}}
  */
 export function getCurrentUser() {
-	const db = getDB();
-	const userId = Number(localStorage.getItem(CONFIG.KEYS.CURRENT_USER));
+	try {
+		const raw = localStorage.getItem(CONFIG.KEYS.CURRENT_USER);
+		if (!raw) return { user: null, userId: null };
 
-	if (!userId || isNaN(userId)) {
+		const user = JSON.parse(raw);
+		return { user, userId: user?.id || null };
+	} catch {
 		return { user: null, userId: null };
 	}
-
-	const user = db.usuarios.find(u => u.id === userId);
-	return { user: user || null, userId };
 }
 
 /**
- * Verifica si hay una sesión activa y válida
- * @returns {boolean} True si hay sesión válida
+ * Verifica si hay una sesión activa y válida (por tiempo)
+ * @returns {boolean}
  */
 export function hasValidSession() {
 	const { user } = getCurrentUser();
@@ -68,11 +69,8 @@ export function hasValidSession() {
 	const lastActivity = localStorage.getItem(CONFIG.KEYS.LAST_ACTIVITY);
 	if (!lastActivity) return false;
 
-	const now = Date.now();
-	const lastActivityTime = parseInt(lastActivity, 10);
 	const timeoutMs = CONFIG.SESSION.TIMEOUT_MINUTES * 60 * 1000;
-
-	return (now - lastActivityTime) < timeoutMs;
+	return (Date.now() - parseInt(lastActivity, 10)) < timeoutMs;
 }
 
 /**
@@ -83,6 +81,15 @@ export function updateLastActivity() {
 }
 
 /**
+ * Guarda al usuario en sesión local después del login
+ * @param {Object} user - Usuario retornado por la API
+ */
+export function login(user) {
+	localStorage.setItem(CONFIG.KEYS.CURRENT_USER, JSON.stringify(user));
+	updateLastActivity();
+}
+
+/**
  * Cierra la sesión actual
  */
 export function logout() {
@@ -90,77 +97,38 @@ export function logout() {
 	localStorage.removeItem(CONFIG.KEYS.LAST_ACTIVITY);
 }
 
-/**
- * Inicia sesión con un usuario
- * @param {Object} user - Usuario a iniciar sesión
- */
-export function login(user) {
-	localStorage.setItem(CONFIG.KEYS.CURRENT_USER, String(user.id));
-	updateLastActivity();
+// ─── Publicaciones ───────────────────────────────────────────────────────────
 
-	// Actualizar último login
-	const db = getDB();
-	const userIndex = db.usuarios.findIndex(u => u.id === user.id);
-	if (userIndex >= 0) {
-		db.usuarios[userIndex].ultimoLogin = new Date().toISOString();
-		saveDB(db);
-	}
+/**
+ * Obtiene el feed público de publicaciones
+ * @returns {Promise<{ok: boolean, publicaciones: Array, error: string|null}>}
+ */
+export async function getPublicacionesPublicasAPI() {
+	const { ok, data, error } = await apiFetch('Publicaciones');
+	return {
+		ok,
+		publicaciones: ok ? (data.publicaciones || []) : [],
+		error
+	};
 }
 
 /**
- * Asegura que los usuarios demo existan en la BD
+ * Crea una nueva publicación
+ * @param {Object} datos - { titulo, categoria, visibilidad, descripcion }
+ * @returns {Promise<{ok: boolean, publicacion: Object|null, error: string|null}>}
  */
-export function ensureDemoUsers() {
-	const db = getDB();
-	let changed = false;
+export async function crearPublicacionAPI(datos) {
+	const { user } = getCurrentUser();
+	if (!user) return { ok: false, publicacion: null, error: 'No hay sesión activa' };
 
-	CONFIG.DEMO_USERS.forEach(demo => {
-		const exists = db.usuarios.some(u => u.correo === demo.correo);
-		if (!exists) {
-			db.usuarios.push({
-				...demo,
-				bio: 'Usuario de demostración de Nube Gallery',
-				avatar: null,
-				rol: 'usuario',
-				activo: true,
-				creadoEn: new Date().toISOString(),
-				ultimoLogin: null
-			});
-			changed = true;
-		}
+	const { ok, data, error } = await apiFetch('Publicaciones', {
+		method: 'POST',
+		body: JSON.stringify({ ...datos, usuario_id: user.id })
 	});
 
-	if (changed) {
-		saveDB(db);
-	}
-}
-
-/**
- * Limpia datos antiguos o inválidos
- */
-export function cleanupDB() {
-	const db = getDB();
-
-	// Eliminar publicaciones sin usuario
-	db.publicaciones = db.publicaciones.filter(pub => {
-		return db.usuarios.some(u => u.id === pub.usuarioId);
-	});
-
-	// Asegurar interacciones válidas
-	db.publicaciones.forEach(pub => {
-		if (!Array.isArray(pub.likes)) pub.likes = [];
-		if (!Array.isArray(pub.comentarios)) pub.comentarios = [];
-
-		// Eliminar likes de usuarios que ya no existen
-		pub.likes = pub.likes.filter(userId =>
-			db.usuarios.some(u => u.id === userId)
-		);
-
-		// Eliminar comentarios de usuarios que ya no existen
-		pub.comentarios = pub.comentarios.filter(com =>
-			db.usuarios.some(u => u.id === com.userId)
-		);
-	});
-
-	saveDB(db);
+	return {
+		ok,
+		publicacion: ok ? data.publicacion : null,
+		error
+	};
 }

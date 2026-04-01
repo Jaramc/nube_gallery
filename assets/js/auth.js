@@ -1,41 +1,23 @@
 /**
- * Módulo de autenticación y validación
+ * Módulo de autenticación y validación — migrado a Azure Functions
  * @module auth
+ *
+ * CAMBIOS vs versión localStorage:
+ *  - simpleHash() / verifyHash() eliminadas — bcrypt lo maneja la Function en Azure
+ *  - registrarUsuario() ahora llama POST /api/Registro
+ *  - iniciarSesion() ahora llama POST /api/Login
+ *  - Las validaciones locales se mantienen igual (no cambian)
+ *  - getCurrentUser() y requireAuth() se mantienen igual
  */
 
 import { CONFIG } from './config.js';
-import { getDB, saveDB, login } from './database.js';
+import { login, getCurrentUser } from './database.js';
 
-/**
- * Hash simple de contraseña (NO usar en producción)
- * En producción se debe usar bcrypt o similar del lado del servidor
- * @param {string} password - Contraseña a hashear
- * @returns {string} Hash de la contraseña
- */
-function simpleHash(password) {
-	let hash = 0;
-	for (let i = 0; i < password.length; i++) {
-		const char = password.charCodeAt(i);
-		hash = ((hash << 5) - hash) + char;
-		hash = hash & hash;
-	}
-	// Agregar salt simulado
-	return `hashed_${Math.abs(hash)}_${password.length}`;
-}
-
-/**
- * Verifica un hash de contraseña
- * @param {string} password - Contraseña en texto plano
- * @param {string} hash - Hash almacenado
- * @returns {boolean} True si coinciden
- */
-function verifyHash(password, hash) {
-	return simpleHash(password) === hash;
-}
+// ─── Validaciones locales (sin cambios) ──────────────────────────────────────
 
 /**
  * Valida un email
- * @param {string} email - Email a validar
+ * @param {string} email
  * @returns {{valid: boolean, error: string|null}}
  */
 export function validateEmail(email) {
@@ -58,7 +40,7 @@ export function validateEmail(email) {
 
 /**
  * Valida una contraseña
- * @param {string} password - Contraseña a validar
+ * @param {string} password
  * @returns {{valid: boolean, error: string|null, strength: string}}
  */
 export function validatePassword(password) {
@@ -75,24 +57,21 @@ export function validatePassword(password) {
 	}
 
 	// Calcular fortaleza
-	let strength = 'weak';
 	let score = 0;
+	if (password.length >= 12)          score++;
+	if (/[a-z]/.test(password))         score++;
+	if (/[A-Z]/.test(password))         score++;
+	if (/[0-9]/.test(password))         score++;
+	if (/[^a-zA-Z0-9]/.test(password))  score++;
 
-	if (password.length >= 12) score++;
-	if (/[a-z]/.test(password)) score++;
-	if (/[A-Z]/.test(password)) score++;
-	if (/[0-9]/.test(password)) score++;
-	if (/[^a-zA-Z0-9]/.test(password)) score++;
-
-	if (score >= 4) strength = 'strong';
-	else if (score >= 3) strength = 'medium';
+	const strength = score >= 4 ? 'strong' : score >= 3 ? 'medium' : 'weak';
 
 	return { valid: true, error: null, strength };
 }
 
 /**
  * Valida un nombre de usuario
- * @param {string} nombre - Nombre a validar
+ * @param {string} nombre
  * @returns {{valid: boolean, error: string|null}}
  */
 export function validateNombre(nombre) {
@@ -112,135 +91,99 @@ export function validateNombre(nombre) {
 	return { valid: true, error: null };
 }
 
+// ─── Autenticación via API ────────────────────────────────────────────────────
+
 /**
- * Registra un nuevo usuario
- * @param {Object} datos - Datos del usuario
- * @param {string} datos.nombre - Nombre completo
- * @param {string} datos.correo - Email
- * @param {string} datos.contrasena - Contraseña
- * @returns {{success: boolean, error: string|null, user: Object|null}}
+ * Registra un nuevo usuario llamando a la Azure Function
+ * @param {Object} datos - { nombre, correo, contrasena }
+ * @returns {Promise<{success: boolean, error: string|null, user: Object|null}>}
  */
-export function registrarUsuario({ nombre, correo, contrasena }) {
-	// Validaciones
-	const nombreValidation = validateNombre(nombre);
-	if (!nombreValidation.valid) {
-		return { success: false, error: nombreValidation.error, user: null };
+export async function registrarUsuario({ nombre, correo, contrasena }) {
+	// Validaciones locales primero (evita llamadas innecesarias a la API)
+	const nombreVal = validateNombre(nombre);
+	if (!nombreVal.valid) return { success: false, error: nombreVal.error, user: null };
+
+	const emailVal = validateEmail(correo);
+	if (!emailVal.valid) return { success: false, error: emailVal.error, user: null };
+
+	const passVal = validatePassword(contrasena);
+	if (!passVal.valid) return { success: false, error: passVal.error, user: null };
+
+	// Llamada a la API
+	try {
+		const res = await fetch(`${CONFIG.API_BASE}/Registro`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				nombre: nombre.trim(),
+				correo: correo.trim().toLowerCase(),
+				contrasena
+			})
+		});
+
+		const data = await res.json();
+
+		if (!res.ok) {
+			return { success: false, error: data.error || 'Error al registrar', user: null };
+		}
+
+		// Guardar sesión local con el usuario que retornó la API
+		login(data.usuario);
+
+		return { success: true, error: null, user: data.usuario };
+
+	} catch (err) {
+		console.error('Error en registrarUsuario:', err);
+		return { success: false, error: 'No se pudo conectar con el servidor', user: null };
 	}
-
-	const emailValidation = validateEmail(correo);
-	if (!emailValidation.valid) {
-		return { success: false, error: emailValidation.error, user: null };
-	}
-
-	const passwordValidation = validatePassword(contrasena);
-	if (!passwordValidation.valid) {
-		return { success: false, error: passwordValidation.error, user: null };
-	}
-
-	// Verificar si el usuario ya existe
-	const db = getDB();
-	const correoLower = correo.trim().toLowerCase();
-	const existe = db.usuarios.some(u => u.correo === correoLower);
-
-	if (existe) {
-		return { success: false, error: 'Este correo ya está registrado', user: null };
-	}
-
-	// Crear nuevo usuario
-	const nuevoUsuario = {
-		id: Date.now(),
-		nombre: nombre.trim(),
-		correo: correoLower,
-		contrasena: simpleHash(contrasena),
-		bio: '',
-		avatar: null,
-		rol: 'usuario',
-		activo: true,
-		creadoEn: new Date().toISOString(),
-		ultimoLogin: new Date().toISOString()
-	};
-
-	db.usuarios.push(nuevoUsuario);
-	saveDB(db);
-	login(nuevoUsuario);
-
-	return { success: true, error: null, user: nuevoUsuario };
 }
 
 /**
- * Inicia sesión de un usuario
- * @param {string} correo - Email del usuario
- * @param {string} contrasena - Contraseña del usuario
- * @returns {{success: boolean, error: string|null, user: Object|null}}
+ * Inicia sesión llamando a la Azure Function
+ * @param {string} correo
+ * @param {string} contrasena
+ * @returns {Promise<{success: boolean, error: string|null, user: Object|null}>}
  */
-export function iniciarSesion(correo, contrasena) {
-	// Validaciones básicas
+export async function iniciarSesion(correo, contrasena) {
 	if (!correo || !contrasena) {
 		return { success: false, error: 'Email y contraseña son requeridos', user: null };
 	}
 
-	const db = getDB();
-	const correoLower = correo.trim().toLowerCase();
+	try {
+		const res = await fetch(`${CONFIG.API_BASE}/Login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				correo: correo.trim().toLowerCase(),
+				contrasena
+			})
+		});
 
-	// Buscar usuario
-	const usuario = db.usuarios.find(u => u.correo === correoLower);
+		const data = await res.json();
 
-	if (!usuario) {
-		return { success: false, error: 'Credenciales inválidas', user: null };
+		if (!res.ok) {
+			return { success: false, error: data.error || 'Credenciales inválidas', user: null };
+		}
+
+		// Guardar sesión local
+		login(data.usuario);
+
+		return { success: true, error: null, user: data.usuario };
+
+	} catch (err) {
+		console.error('Error en iniciarSesion:', err);
+		return { success: false, error: 'No se pudo conectar con el servidor', user: null };
 	}
-
-	if (!usuario.activo) {
-		return { success: false, error: 'Esta cuenta ha sido desactivada', user: null };
-	}
-
-	// Verificar contraseña
-	if (!verifyHash(contrasena, usuario.contrasena)) {
-		return { success: false, error: 'Credenciales inválidas', user: null };
-	}
-
-	// Iniciar sesión
-	login(usuario);
-
-	return { success: true, error: null, user: usuario };
 }
 
-/**
- * Cambia la contraseña de un usuario
- * @param {number} userId - ID del usuario
- * @param {string} contrasenaActual - Contraseña actual
- * @param {string} contrasenaNueva - Nueva contraseña
- * @returns {{success: boolean, error: string|null}}
- */
-export function cambiarContrasena(userId, contrasenaActual, contrasenaNueva) {
-	const db = getDB();
-	const usuario = db.usuarios.find(u => u.id === userId);
-
-	if (!usuario) {
-		return { success: false, error: 'Usuario no encontrado' };
-	}
-
-	if (!verifyHash(contrasenaActual, usuario.contrasena)) {
-		return { success: false, error: 'La contraseña actual es incorrecta' };
-	}
-
-	const passwordValidation = validatePassword(contrasenaNueva);
-	if (!passwordValidation.valid) {
-		return { success: false, error: passwordValidation.error };
-	}
-
-	// Actualizar contraseña
-	const userIndex = db.usuarios.findIndex(u => u.id === userId);
-	db.usuarios[userIndex].contrasena = simpleHash(contrasenaNueva);
-	saveDB(db);
-
-	return { success: true, error: null };
-}
+// ─── Protección de rutas (sin cambios) ───────────────────────────────────────
 
 /**
- * Protege una página - redirige si no hay sesión válida
- * @param {string} redirectTo - URL a donde redirigir si no hay sesión
+ * Protege una página — redirige si no hay sesión válida
+ * @param {string} redirectTo
+ * @returns {boolean}
  */
-export function requireAuth(redirectTo = '/login.html') {
+export function requireAuth(redirectTo = 'loguin.html') {
 	const { user } = getCurrentUser();
 	if (!user) {
 		window.location.href = redirectTo;
